@@ -78,12 +78,18 @@ npm run sync:www
 
 이 명령은 배포 자산 검증도 수행한다. Android Studio에서 빌드하기 전 `www/`와 `android/app/src/main/assets/public/`의 최신 상태를 확인한다.
 
+Android 프로젝트의 앱 자산까지 한 번에 복사하려면 다음 명령을 사용한다.
+
+```powershell
+npm run android:sync
+```
+
 ## Android 빌드
 
 최초 실행 시 `android/local.properties`에 로컬 Android SDK 위치가 필요할 수 있다. 이 파일과 `google-services.json`, 서명 키는 보안상 Git에 포함되지 않는다.
 
 ```powershell
-npm run sync:www
+npm run android:sync
 cd android
 ./gradlew test assembleDebug
 ```
