@@ -58,6 +58,7 @@
     );
     row("Gas", dive.gasUsed);
     row("Salinity", dive.salinity);
+    row("Weight", dive.weight == null ? "—" : dive.weight + " kg");
     row(
       "Depth / duration",
       `${clean(dive.depth)} m · ${clean(dive.duration)} min`,

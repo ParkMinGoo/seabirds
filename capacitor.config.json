@@ -1,1 +1,1 @@
-{"appId":"com.threecats.seabirds","appName":"SeaBirds","webDir":"www","android":{"buildOptions":{"releaseType":"AAB"}},"server":{"androidScheme":"https"},"plugins":{"FirebaseAuthentication":{"skipNativeAuth":true,"providers":["google.com"]}}}
+{"appId":"com.dldpadkdl1.peregrinelogbook","appName":"페레그린 로그북","webDir":"www","android":{"buildOptions":{"releaseType":"APK"}},"server":{"androidScheme":"https"}}

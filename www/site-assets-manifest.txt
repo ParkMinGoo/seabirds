@@ -12,6 +12,7 @@ equipment.js
 devices-ui.js
 settings-ui.js
 import-export.js
+photo-log-import.js
 shearwater.js
 sync.js
 storage.js
@@ -19,12 +20,14 @@ zhl-profile-engine.js
 plot-core.js
 update.js
 app-version.js
+ko.js
 version.json
 manifest.webmanifest
 icon.svg
 icon-192.png
 icon-512.png
 seabirds-app-icon.png
+cat-couple-diving.png
 shearwater-logo.png
 shearwater-logo-stacked.png
 app-dplanner.png

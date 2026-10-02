@@ -2,7 +2,7 @@
 'use strict';
 const Core=window.SeaBirds.Core;
 await Core.init();
-['equipment','diveEditor','diveExport','diveList','devices','settings','importExport'].forEach(name=>Core.feature(name)?.init());
+['equipment','diveEditor','diveExport','diveList','devices','settings','importExport','photoLogImport'].forEach(name=>Core.feature(name)?.init());
 const mobileSummary=document.querySelector('.mobile-stats-collapse');
 if(mobileSummary){
   const mobileQuery=window.matchMedia('(max-width: 600px)');

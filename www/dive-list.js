@@ -9,6 +9,7 @@
     groupFilters = new Set(),
     yearFilters = new Set(),
     monthFilters = new Set(),
+    activeTripGroupId = null,
     sort = "date-desc",
     page = 1;
   const source = (d) => {
@@ -45,6 +46,10 @@
   const diveType = (d) => d.diveType || "N/A";
   const matchesGroup = (d, group) => {
     if (!group) return false;
+    if (group.type === "range") {
+      const number = Number(d.diveNumber);
+      return Number.isFinite(number) && number >= Number(group.startNumber) && number <= Number(group.endNumber);
+    }
     if (group.type === "manual") return (d.groupIds || []).includes(group.id);
     const value = String(d[group.field] || "").trim().toLowerCase();
     return value === String(group.value || "").trim().toLowerCase();
@@ -77,13 +82,55 @@
     const [hours, minutes] = value.split(":").map(Number);
     if (Core.getState().settings.timeFormat === "24")
       return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-    return `${hours % 12 || 12}:${String(minutes).padStart(2, "0")} ${hours >= 12 ? "PM" : "AM"}`;
+    return `${hours >= 12 ? "오후" : "오전"} ${hours % 12 || 12}:${String(minutes).padStart(2, "0")}`;
   }
   function calculatedEndTime(start, duration) {
     if (!start || !/^([01]\d|2[0-3]):[0-5]\d$/.test(start)) return "";
     const [hours, minutes] = start.split(":").map(Number),
       total = (hours * 60 + minutes + (+duration || 0)) % (24 * 60);
     return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  }
+  const tripDateLabel = (value) => {
+    if (!value) return "날짜 미입력";
+    const date = new Date(`${value}T12:00:00`), weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+    return `${date.getMonth() + 1}월 ${date.getDate()}일 (${weekdays[date.getDay()]})`;
+  };
+  const pressureValues = (d) => {
+    const recorded = (d.profile || []).map((sample) => Number(sample.pressure)).filter(Number.isFinite);
+    return [d.startPressure ?? recorded[0] ?? null, d.endPressure ?? recorded.at(-1) ?? null];
+  };
+  function renderTripOverview() {
+    const target = document.getElementById("tripGroupsOverview"),
+      section = document.getElementById("tripGroupsSection"),
+      groups = (Core.getState().diveGroups || []).filter((group) => group.type === "range");
+    if (!target || !section) return;
+    section.hidden = Boolean(activeTripGroupId);
+    target.innerHTML = groups.length ? groups.map((group) => {
+      const dives = Core.getState().dives.filter((dive) => matchesGroup(dive, group)).sort((a, b) => stamp(a).localeCompare(stamp(b))),
+        dates = dives.map((dive) => dive.date).filter(Boolean),
+        period = dates.length ? `${Core.formatDate(dates[0]).ymd} — ${Core.formatDate(dates.at(-1)).ymd}` : "일치하는 로그 없음";
+      return `<button type="button" class="trip-group-card" data-open-trip-group="${Core.esc(group.id)}"><span class="trip-group-card-title"><b>${Core.esc(group.name)}</b><i>›</i></span><small>${Core.esc(period)}</small><span><em>LOG ${Core.esc(group.startNumber)}—${Core.esc(group.endNumber)}</em><strong>${dives.length}회 다이빙</strong></span></button>`;
+    }).join("") : `<button type="button" class="trip-group-empty" data-create-trip-group><b>첫 여행 그룹을 만들어 보세요</b><small>시작·끝 로그번호만 입력하면 날짜와 시간순으로 자동 정리됩니다.</small></button>`;
+  }
+  function renderTripDetail() {
+    const target = document.getElementById("tripGroupDetail"),
+      allDives = document.getElementById("allDives"),
+      pagination = document.getElementById("divePagination"),
+      group = (Core.getState().diveGroups || []).find((item) => item.id === activeTripGroupId && item.type === "range");
+    if (!target) return;
+    document.getElementById("dives")?.classList.toggle("trip-detail-active", Boolean(group));
+    if (!group) { target.hidden = true; allDives.hidden = false; pagination.hidden = false; return; }
+    const dives = Core.getState().dives.filter((dive) => matchesGroup(dive, group)).sort((a, b) => stamp(a).localeCompare(stamp(b))),
+      byDate = new Map();
+    dives.forEach((dive) => { const key = dive.date || "unknown"; if (!byDate.has(key)) byDate.set(key, []); byDate.get(key).push(dive); });
+    const dates = dives.map((dive) => dive.date).filter(Boolean),
+      period = dates.length ? `${Core.formatDate(dates[0]).ymd} — ${Core.formatDate(dates.at(-1)).ymd}` : "일치하는 로그 없음";
+    target.innerHTML = `<header class="trip-detail-hero"><button type="button" data-close-trip-group aria-label="전체 로그로 돌아가기">←</button><span><small>여행별 로그</small><h2>${Core.esc(group.name)}</h2><p>${Core.esc(period)} · 로그 ${Core.esc(group.startNumber)}—${Core.esc(group.endNumber)}</p></span><b>${dives.length}회<br><small>다이빙</small></b><button type="button" class="trip-detail-edit" data-edit-trip-group="${Core.esc(group.id)}" aria-label="여행 그룹 수정">✎</button></header>` +
+      (dives.length ? [...byDate.entries()].map(([date, dayDives], index) => `<section class="trip-day-section"><header><span><b>${index + 1}일차 · ${Core.esc(tripDateLabel(date))}</b><small>${Core.esc(dayDives[0]?.location || "지역 미입력")} · ${dayDives.length}회</small></span></header><div>${dayDives.map((dive) => {
+        const [startPressure, endPressure] = pressureValues(dive), point = dive.diveSite || dive.site || "포인트 미입력";
+        return `<button type="button" class="dive-row trip-dive-row" data-id="${Core.esc(dive.id)}"><time>${Core.esc(displayTime(dive.time) || "--:--")}</time><span><small>로그 ${Core.esc(dive.diveNumber ?? "—")}</small><b>${Core.esc(point)}</b><em>최대 ${Core.converted(+dive.depth).toFixed(1)} ${Core.getState().settings.depth} · ${dive.duration || 0}분</em></span><strong>${startPressure == null ? "—" : Math.round(startPressure)} → ${endPressure == null ? "—" : Math.round(endPressure)} bar</strong><i>›</i></button>`;
+      }).join("")}</div></section>`).join("") : '<div class="trip-no-dives"><b>이 범위에 해당하는 로그가 없습니다</b><small>그룹을 수정하거나 다이빙 로그번호를 확인해 주세요.</small></div>');
+    target.hidden = false; allDives.hidden = true; pagination.hidden = true;
   }
   function rows(target, dives) {
     if (!target) return;
@@ -99,10 +146,13 @@
                   ? diveMode
                   : `${diveMode} / ${diveStyle}`,
               startTime = displayTime(d.time),
-              endTime = displayTime(
-                d.endTime || calculatedEndTime(d.time, d.duration),
-              );
-            return `<button class="dive-row" data-id="${Core.esc(d.id)}"><span class="dive-number-cell"><small>Dive #</small><b>${d.diveNumber ?? "&mdash;"}</b></span><span class="dive-summary"><span class="dive-title-line"><b>${Core.esc(d.site)}</b></span><span class="dive-card-details"><span class="dive-card-date">${date.ymd} ${Core.esc(startTime || "--:--")} &ndash; ${Core.esc(endTime || "--:--")}</span><span class="dive-card-divider" aria-hidden="true">|</span><em>${Core.esc(classification)}</em><span>${Core.converted(+d.depth).toFixed(1)} ${state.settings.depth}</span><span>${d.duration} min</span><span class="card-temperature">${d.temp == null ? "&mdash;" : Core.temperature(+d.temp).toFixed(0) + "&deg;" + state.settings.temp.toUpperCase()}</span></span></span><span class="dive-row-arrow">&rsaquo;</span></button>`;
+              location = d.location || "지역 미입력",
+              point = d.diveSite || d.site || "포인트 미입력",
+              recordedPressures = (d.profile || []).map((sample) => Number(sample.pressure)).filter(Number.isFinite),
+              startPressure = d.startPressure ?? recordedPressures[0] ?? null,
+              endPressure = d.endPressure ?? recordedPressures.at(-1) ?? null,
+              pressure = `${startPressure == null ? "—" : Math.round(startPressure)} → ${endPressure == null ? "—" : Math.round(endPressure)} bar`;
+            return `<button class="dive-row logbook-card" data-id="${Core.esc(d.id)}"><span class="dive-number-cell"><small>LOG</small><b>#${d.diveNumber ?? "—"}</b></span><span class="logbook-card-place"><b>${Core.esc(location)}</b><strong>${Core.esc(point)}</strong></span><span class="logbook-card-summary"><small>${Core.esc(date.ymd)}</small><b>${Core.esc(startTime || "--:--")} · ${Core.converted(+d.depth).toFixed(1)} ${state.settings.depth} · ${d.duration || 0}분</b><span class="logbook-card-pressure">${pressure}</span><em>${Core.esc(classification)}</em></span><i class="logbook-card-arrow" aria-hidden="true">›</i></button>`;
           })
           .join("")
       : '<div class="empty"><b>No dives found</b>Change the search or filters to show more dives.</div>';
@@ -281,6 +331,8 @@
       "N/A",
     );
     renderFilters();
+    renderTripOverview();
+    renderTripDetail();
     filterRows();
   }
   function bindFilter(id, attribute, getSet, setSet) {
@@ -387,10 +439,23 @@
       filterRows();
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
+    const createTripGroup = () => Core.feature("settings")?.openGroupEditor(null);
+    document.getElementById("addTripGroup").onclick = createTripGroup;
+    document.getElementById("addTripGroupInline").onclick = createTripGroup;
+    document.getElementById("tripGroupsOverview").onclick = (event) => {
+      if (event.target.closest("[data-create-trip-group]")) return createTripGroup();
+      const id = event.target.closest("[data-open-trip-group]")?.dataset.openTripGroup;
+      if (id) { activeTripGroupId = id; renderTripOverview(); renderTripDetail(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+    };
+    document.getElementById("tripGroupDetail").onclick = (event) => {
+      if (event.target.closest("[data-close-trip-group]")) { activeTripGroupId = null; renderTripOverview(); renderTripDetail(); return; }
+      const editId = event.target.closest("[data-edit-trip-group]")?.dataset.editTripGroup;
+      if (editId) return Core.feature("settings")?.openGroupEditor((Core.getState().diveGroups || []).find((group) => group.id === editId));
+    };
     document.addEventListener("click", (event) => {
       const row = event.target.closest(".dive-row");
       if (row) Core.feature("diveEditor")?.open(row.dataset.id);
     });
   }
-  Core.registerFeature("diveList", { init, render, filterRows, source, matchesGroup });
+  Core.registerFeature("diveList", { init, render, filterRows, source, matchesGroup, renderTripDetail });
 })();

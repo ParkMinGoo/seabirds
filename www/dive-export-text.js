@@ -29,6 +29,7 @@
         `Style: ${value(dive.diveStyle)}`,
         `Gas used: ${value(dive.gasUsed)}`,
         `Salinity: ${value(dive.salinity)}`,
+        `Weight: ${dive.weight == null ? "—" : dive.weight + " kg"}`,
         `Maximum depth: ${value(dive.depth)} m`,
         `Duration: ${value(dive.duration)} min`,
         `Water temperature: ${dive.temp == null ? "\u2014" : dive.temp + " \u00b0C"}`,

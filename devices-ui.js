@@ -113,6 +113,23 @@
         updated = 0,
         restored = 0;
       await Core.commit((state) => {
+        const baselineNumber = Number.parseInt(state.settings.manualLastLogNumber, 10);
+        const baselineDate = state.settings.manualLastLogDate || "";
+        const baselineTime = state.settings.manualLastLogTime || "23:59";
+        const baselineMoment = baselineDate ? `${baselineDate}T${baselineTime}` : "";
+        const currentMax = Math.max(
+          Number.isInteger(baselineNumber) ? baselineNumber : 0,
+          ...state.dives.map((item) => Number.parseInt(item.diveNumber, 10) || 0),
+        );
+        let nextNumber = currentMax + 1;
+        const assignedNumbers = new Map();
+        {
+          dives
+            .filter((dive) => !state.dives.some((item) => item.id === dive.id))
+            .filter((dive) => !baselineMoment || `${dive.date || ""}T${dive.time || "00:00"}` > baselineMoment)
+            .sort((a, b) => `${a.date || ""}T${a.time || "00:00"}`.localeCompare(`${b.date || ""}T${b.time || "00:00"}`) || String(a.id).localeCompare(String(b.id)))
+            .forEach((dive) => assignedNumbers.set(dive.id, nextNumber++));
+        }
         for (const dive of dives) {
           if ((state.deletedDiveIds || []).includes(dive.id)) {
             state.deletedDiveIds = state.deletedDiveIds.filter(
@@ -140,6 +157,7 @@
                     diveStyle: old.diveStyle,
                     gasUsed: old.gasUsed,
                     salinity: old.salinity,
+                    weight: old.weight,
                     equipment: old.equipment,
                     equipmentCategories: old.equipmentCategories,
                     equipmentCards: old.equipmentCards,
@@ -149,7 +167,7 @@
             state.dives[index] = { ...dive, ...user };
             updated++;
           } else {
-            state.dives.push(dive);
+            state.dives.push(assignedNumbers.has(dive.id) ? { ...dive, diveNumber: assignedNumbers.get(dive.id) } : dive);
             added++;
           }
         }

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="utf-8" />
     <meta
@@ -14,16 +14,16 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon-192.png" type="image/png" />
     <link rel="stylesheet" href="app.css?v=74" />
-    <link rel="stylesheet" href="seabirds.css?v=74" />
-    <title>SeaBirds Dive Log</title>
+    <link rel="stylesheet" href="seabirds.css?v=91" />
+    <title>호조비 다이버</title>
   </head>
   <body>
     <div class="shell">
       <aside class="sidebar">
-        <a class="brand" href="#" aria-label="SeaBirds Dive Log home">
+        <a class="brand" href="#" aria-label="호조비 다이버 홈">
           <span class="brand-mark"><img src="icon-192.png" alt="" /></span>
           <span>
-            <b>SeaBirds</b>
+            <b>호조비 다이버</b>
             <small>by Three Cats LSP</small>
           </span>
         </a>
@@ -120,9 +120,15 @@
               </p>
             </div>
             <div class="actions">
+              <button id="addTripGroup" class="trip-group-create compact" type="button">+ 여행 그룹</button>
               <button id="addDive" class="primary compact">+ Add dive</button>
             </div>
           </div>
+          <section id="tripGroupsSection" class="trip-groups-section" aria-labelledby="tripGroupsTitle">
+            <header><span><small>TRIP LOG</small><b id="tripGroupsTitle">여행별 로그</b></span><button type="button" id="addTripGroupInline">+ 그룹 만들기</button></header>
+            <div id="tripGroupsOverview" class="trip-groups-overview"></div>
+          </section>
+          <section id="tripGroupDetail" class="trip-group-detail" hidden></section>
           <div class="toolbar">
             <input
               id="search"
@@ -267,6 +273,28 @@
               </div>
             </div>
             <div class="settings-card">
+              <div id="manualLogBaseline" class="sync-block manual-log-baseline">
+                <span>
+                  <b>기존 수기 로그 기준</b>
+                  <small>앱에 로그가 없을 때 마지막 수기 기록을 입력하면 다음 다이빙부터 로그번호를 자동으로 이어 붙입니다.</small>
+                </span>
+                <div class="manual-log-baseline-fields">
+                  <label>
+                    마지막 로그번호
+                    <input id="manualLastLogNumber" type="number" min="1" max="9999" inputmode="numeric" placeholder="예: 127" />
+                  </label>
+                  <label>
+                    마지막 다이빙 날짜
+                    <input id="manualLastLogDate" type="date" />
+                  </label>
+                  <label>
+                    마지막 시작 시각 <small>(선택)</small>
+                    <input id="manualLastLogTime" type="time" />
+                  </label>
+                  <button type="button" id="saveManualLogBaseline">기준 저장</button>
+                </div>
+                <small id="manualLogBaselineStatus" class="manual-log-baseline-status"></small>
+              </div>
               <div class="sync-block">
                 <span>
                   <b>Google cloud sync</b>
@@ -673,10 +701,14 @@
 
     <dialog id="addDiveDialog" class="choice-dialog">
       <form method="dialog">
-        <button class="close" value="cancel">Ã—</button>
+        <button class="close" value="cancel" aria-label="닫기">×</button>
         <p class="eyebrow">LOGBOOK</p>
         <h2>Add dive</h2>
         <div class="add-dive-options">
+          <button type="button" id="choosePhotoDive">
+            <b>사진 찍기</b>
+            <small>종이 로그북을 촬영해 자동으로 입력합니다</small>
+          </button>
           <button type="button" id="chooseImportDive">
             <b>Import dive</b>
             <small>Import an existing UDDF dive-log file</small>
@@ -686,6 +718,7 @@
             <small>Create a new dive-log entry manually</small>
           </button>
         </div>
+        <input id="photoLogFile" type="file" accept="image/*" capture="environment" hidden />
         <input
           id="importFile"
           type="file"
@@ -706,6 +739,7 @@
           </label>
           <label>Group type
             <select id="diveGroupType">
+              <option value="range">로그번호 범위 (여행)</option>
               <option value="rule">Automatic rule</option>
               <option value="manual">Manual collection</option>
             </select>
@@ -724,6 +758,14 @@
               <input id="diveGroupValue" maxlength="80" placeholder="e.g. Okinawa" />
             </label>
           </div>
+          <div id="diveGroupRangeFields" class="dive-group-range-fields">
+            <label>시작 로그번호
+              <select id="diveGroupStartNumber" aria-label="그룹 시작 로그"></select>
+            </label>
+            <label>끝 로그번호
+              <select id="diveGroupEndNumber" aria-label="그룹 끝 로그"></select>
+            </label>
+          </div>
           <p id="diveGroupHelp" class="wide group-editor-help"></p>
         </div>
         <footer class="dive-group-editor-actions">
@@ -734,7 +776,7 @@
     </dialog>
     <dialog id="diveDialog">
       <form method="dialog">
-        <button class="close" value="cancel">×</button>
+        <button type="button" class="close" value="cancel" aria-label="상세 기록 닫기">×</button>
         <p class="eyebrow">NEW ENTRY</p>
         <h2>Add a dive</h2>
         <div class="form-grid">
@@ -827,12 +869,26 @@
           </button>
         </nav>
         <section class="dive-panel active" data-dive-panel="profile">
+          <header class="paper-view-toolbar">
+            <button type="button" id="paperBack" aria-label="목록으로 돌아가기">‹</button>
+            <b>다이빙 로그</b>
+            <span class="paper-toolbar-actions">
+              <button type="button" id="paperExport" aria-label="로그 내보내기">내보내기</button>
+              <button type="button" id="paperEdit" aria-label="로그 수정">수정</button>
+            </span>
+          </header>
+          <section id="profileEditFields" class="profile-edit-fields" hidden>
+            <div class="edit-grid notes-edit-grid"></div>
+            <button type="button" id="cancelProfileEdit" class="profile-edit-cancel">수정 취소</button>
+          </section>
           <div id="telemetryNotice" class="telemetry-notice" hidden>
             <b>Full telemetry not stored for this dive yet.</b>
             Reconnect the Perdix and choose Download dives once more. SeaBirds
             will update this dive without creating a duplicate.
           </div>
           <div id="profileStats" class="profile-stats"></div>
+          <details class="paper-profile-details">
+            <summary>다이빙 프로필 그래프 보기</summary>
           <div id="seaBirdsProfileCanvas-wrap" class="profile-wrap">
             <canvas
               id="seaBirdsProfileCanvas"
@@ -866,6 +922,7 @@
             >Hover for depth, temperature, NDL/TTS, gas and pressure · scroll to
             zoom</small
           >
+          </details>
         </section>
         <section class="dive-panel" data-dive-panel="notes">
           <div class="edit-grid notes-edit-grid">
@@ -893,6 +950,20 @@
             <label class="notes-end-time"
               >End time<input id="editDiveEndTime" type="time" step="60"
             /></label>
+            <label>최대 수심 (m)<input id="editDiveDepth" type="number" min="0" step="0.1" inputmode="decimal" /></label>
+            <label>다이빙 시간 (분)<input id="editDiveDuration" type="number" min="0" step="1" inputmode="numeric" /></label>
+            <label>최저 수온 (℃)<input id="editDiveTemp" type="number" step="0.1" inputmode="decimal" /></label>
+            <label>평균 수심 (m)<input id="editDiveAvgDepth" type="number" min="0" step="0.1" inputmode="decimal" /></label>
+            <label>수면 수온 (℃)<input id="editDiveSurfaceTemp" type="number" step="0.1" inputmode="decimal" /></label>
+            <label>시야 (m)<input id="editDiveVisibility" type="number" min="0" step="0.1" inputmode="decimal" /></label>
+            <label>웨이트 (kg)<input id="editDiveWeight" type="number" min="0" step="0.1" inputmode="decimal" /></label>
+            <label>수면 휴식 (분)<input id="editDiveSurfaceInterval" type="number" min="0" step="1" inputmode="numeric" /></label>
+            <label>안전 정지<select id="editDiveSafetyStop"><option value="">미기록</option><option value="3">3분</option><option value="5">5분</option><option value="0">안 함</option></select></label>
+            <label>시작 공기압 (bar)<input id="editDiveStartPressure" type="number" min="0" step="1" inputmode="numeric" /></label>
+            <label>종료 공기압 (bar)<input id="editDiveEndPressure" type="number" min="0" step="1" inputmode="numeric" /></label>
+            <label>날씨<select id="editDiveWeather"><option value="">미기록</option><option value="맑음">맑음</option><option value="구름 조금">구름 조금</option><option value="흐림">흐림</option><option value="비">비</option><option value="눈">눈</option></select></label>
+            <label>파도<select id="editDiveWave"><option value="">미기록</option><option value="없음">없음</option><option value="약함">약함</option><option value="보통">보통</option><option value="강함">강함</option></select></label>
+            <label>조류<select id="editDiveCurrent"><option value="">미기록</option><option value="없음">없음</option><option value="약함">약함</option><option value="보통">보통</option><option value="강함">강함</option></select></label>
             <label class="notes-dive-type"
               >Type<select id="editDiveType">
                 <option value="">N/A</option>
@@ -959,6 +1030,13 @@
                 placeholder="Conditions, sightings, observations…"
               ></textarea>
             </label>
+            <section class="wide dive-media-section" aria-labelledby="diveMediaTitle">
+              <div class="dive-media-heading">
+                <span><b id="diveMediaTitle">사진 및 동영상</b><small>이 휴대폰에만 안전하게 보관됩니다</small></span>
+                <div class="dive-media-actions"><button type="button" class="dive-drawing-add" data-open-dive-drawing>그림 그리기</button><label class="dive-media-add">사진·동영상 추가<input id="editDiveMedia" type="file" accept="image/*,video/*" multiple /></label></div>
+              </div>
+              <div id="diveMediaGallery" class="dive-media-gallery"></div>
+            </section>
           </div>
         </section>
         <section class="dive-panel" data-dive-panel="equipment">
@@ -984,6 +1062,35 @@
             Save
           </button>
         </footer>
+      </form>
+    </dialog>
+    <dialog id="quickEditDialog" class="quick-edit-dialog">
+      <form method="dialog">
+        <button type="button" class="close" aria-label="빠른 수정 닫기">&times;</button>
+        <p class="eyebrow">선택 항목 수정</p>
+        <h2 id="quickEditTitle">정보 수정</h2>
+        <div id="quickEditControl" class="quick-edit-control"></div>
+        <div class="quick-edit-actions">
+          <button type="button" id="quickEditCancel">취소</button>
+          <button type="button" id="quickEditSave" class="primary">저장</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="diveDrawingDialog" class="dive-drawing-dialog" aria-labelledby="diveDrawingTitle">
+      <form method="dialog">
+        <button type="button" class="close" aria-label="그림판 닫기">×</button>
+        <p class="eyebrow">다이빙 스케치</p>
+        <h2 id="diveDrawingTitle">그림 그리기</h2>
+        <p class="drawing-help">손가락으로 다이빙의 추억이나 물고기를 자유롭게 그려 보세요.</p>
+        <div class="drawing-toolbar" aria-label="그림 도구">
+          <label>색상 <input id="diveDrawingColor" type="color" value="#253b62" /></label>
+          <label>굵기 <input id="diveDrawingSize" type="range" min="2" max="28" value="6" /></label>
+          <button type="button" id="diveDrawingEraser" aria-pressed="false">지우개</button>
+          <button type="button" id="diveDrawingUndo">되돌리기</button>
+          <button type="button" id="diveDrawingClear">전체 지우기</button>
+        </div>
+        <div class="drawing-canvas-wrap"><canvas id="diveDrawingCanvas" width="900" height="600" aria-label="손가락 그림판"></canvas></div>
+        <footer class="drawing-actions"><button type="button" id="cancelDiveDrawing">취소</button><button type="button" id="saveDiveDrawing" class="primary">그림 저장</button></footer>
       </form>
     </dialog>
     <dialog id="diveExportDialog" class="choice-dialog dive-export-dialog">
@@ -1055,12 +1162,12 @@
     <script src="app-version.js?v=112"></script>
     <script src="zhl-profile-engine.js?v=112"></script>
     <script src="plot-core.js?v=111"></script>
-    <script src="storage.js?v=111"></script>
+    <script src="storage.js?v=113"></script>
     <script src="sync.js?v=111"></script>
     <script src="shearwater.js?v=111"></script>
     <script src="app-core.js?v=111"></script>
-    <script src="dive-list.js?v=111"></script>
-    <script src="dive-editor.js?v=111"></script>
+    <script src="dive-list.js?v=113"></script>
+    <script src="dive-editor.js?v=129"></script>
     <script src="dive-export-utils.js?v=111"></script>
     <script src="dive-export-text.js?v=111"></script>
     <script src="dive-export-pdf.js?v=111"></script>
@@ -1068,9 +1175,11 @@
     <script src="dive-export-ui.js?v=111"></script>
     <script src="equipment.js?v=111"></script>
     <script src="devices-ui.js?v=111"></script>
-    <script src="settings-ui.js?v=112"></script>
+    <script src="settings-ui.js?v=114"></script>
     <script src="import-export.js?v=111"></script>
+    <script src="photo-log-import.js?v=1"></script>
     <script src="app.js?v=111"></script>
     <script src="update.js?v=111"></script>
+    <script src="ko.js?v=2"></script>
   </body>
 </html>

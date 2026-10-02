@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">SeaBirds</string>
-    <string name="title_activity_main">SeaBirds</string>
-    <string name="package_name">com.threecats.seabirds</string>
-    <string name="custom_url_scheme">com.threecats.seabirds</string>
+    <string name="app_name">호조비 다이버</string>
+    <string name="title_activity_main">호조비 다이버</string>
+    <string name="package_name">com.dldpadkdl1.peregrinelogbook</string>
+    <string name="custom_url_scheme">com.dldpadkdl1.peregrinelogbook</string>
 </resources>

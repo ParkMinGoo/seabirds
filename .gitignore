@@ -12,3 +12,6 @@ android/app/google-services.json
 test-results/
 playwright-report/
 release-*/
+/outputs/
+/imports/
+/pnpm-lock.yaml

@@ -34,35 +34,35 @@ test("starts all modules and navigates", async ({ page }) => {
   await expect(page.locator(".platform-downloads .download")).toHaveCount(2);
   await expect(page.locator(".platform-downloads")).toContainText("Android");
   await expect(page.locator(".platform-downloads")).toContainText("Windows");
-  await expect(page.locator(".support-block")).toContainText("Found a bug or have a feature idea?");
+  await expect(page.locator(".support-block")).toContainText("오류를 발견했거나 새로운 기능을 제안하고 싶으신가요?");
   await expect(page.locator(".support-block a[href='https://github.com/Three-Cats-LSP/seabirds/issues']")).toBeVisible();
   await expect(page.locator(".settings-collapse")).not.toHaveAttribute(
     "open",
     "",
   );
-  await page.getByText("Units & formats", { exact: true }).click();
+  await page.locator(".settings-collapse > summary").click();
   await expect(page.locator(".settings-collapse")).toHaveAttribute("open", "");
   await expect(page.locator("#masterGearLibrary")).toBeHidden();
-  await page.getByRole("button", { name: "Manage lists" }).click();
+  await page.locator("#openMasterGear").click();
   await expect(page.locator("#settingsMain")).toBeHidden();
   await expect(page.locator("#masterGearPage")).toBeVisible();
   await expect(page.locator("#masterGearPage .master-gear")).toBeVisible();
-  await page.getByRole("button", { name: /Back to Settings/ }).click();
+  await page.locator("#closeMasterGear").click();
   await expect(page.locator("#settingsMain")).toBeVisible();
-  await page.getByRole("button", { name: "Manage groups" }).click();
+  await page.locator("#openDiveGroups").click();
   await expect(page.locator("#diveGroupsPage")).toBeVisible();
   await expect(page.locator("#diveGroupDialog")).not.toHaveAttribute("open", "");
-  await page.getByRole("button", { name: "Add group" }).click();
+  await page.locator("#newDiveGroup").click();
   await expect(page.locator("#diveGroupDialog")).toHaveAttribute("open", "");
   await page.locator("#diveGroupName").fill("Weekend dives");
   await page.locator("#diveGroupType").selectOption("manual");
   await expect(page.locator("#diveGroupRuleFields")).toBeHidden();
-  await page.getByRole("button", { name: "Save group" }).click();
+  await page.locator("#saveDiveGroup").click();
   await expect(page.locator("#diveGroupDialog")).not.toHaveAttribute("open", "");
   await expect(page.locator("#diveGroupsLibrary")).toContainText("Weekend dives");
-  await expect(page.getByRole("button", { name: "Edit group" })).toContainText("✎");
+  await expect(page.locator(".edit-dive-group")).toContainText("✎");
   await expect(page.locator("#saveMasterGear")).toHaveClass(/save-dive/);
-  await page.getByRole("button", { name: /Back to Settings/ }).click();
+  await page.locator("#closeDiveGroups").click();
   await expect(page.locator("#settingsMain")).toBeVisible();
 });
 
@@ -186,18 +186,18 @@ test("paginates dives and filters by year and month", async ({ page }) => {
     }),
   );
   await page.locator('.nav[data-view="settings"]').click();
-  await page.getByLabel("Dives per page").selectOption("10");
+  await page.locator("#divesPerPage").selectOption("10");
   await page.locator('.nav[data-view="dives"]').click();
   await expect(page.locator("#allDives .dive-row")).toHaveCount(10);
-  await expect(page.locator("#divePagination")).toContainText("Page 1 of 2");
-  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.locator("#divePagination")).toContainText("1 / 2 페이지");
+  await page.locator('[data-page="next"]').click();
   await expect(page.locator("#allDives .dive-row")).toHaveCount(2);
   await page.locator(".logbook-filter-collapse > summary").click();
   await page.locator("#yearFilter summary").click();
   await page.locator("#yearFilters").getByLabel("2025").check();
   await expect(page.locator("#allDives .dive-row")).toHaveCount(6);
   await page.locator("#monthFilter summary").click();
-  await page.locator("#monthFilters").getByLabel("July").check();
+  await page.locator('#monthFilters [data-month-filter]:not([data-month-filter="all"])').first().check();
   await expect(page.locator("#allDives .dive-row")).toHaveCount(6);
   await expect(page.locator("#monthFilter")).toHaveAttribute("open", "");
   const panelWidths = await page.evaluate(() =>
@@ -233,7 +233,7 @@ test("filters manual and automatic dive groups", async ({ page }) => {
   await page.locator("#groupFilters").getByLabel("Okinawa").check();
   await expect(page.locator("#allDives .dive-row")).toHaveCount(1);
   await expect(page.locator("#allDives")).toContainText("Rule dive");
-  await page.locator("#groupFilters").getByLabel("All").check();
+  await page.locator('[data-group-filter="all"]').check();
   await page.locator("#groupFilters").getByLabel("Fun dives").check();
   await expect(page.locator("#allDives .dive-row")).toHaveCount(1);
   await expect(page.locator("#allDives")).toContainText("Manual group dive");
@@ -254,43 +254,43 @@ test("shows readable placeholders for missing dive times", async ({ page }) => {
     }),
   );
   await expect(page.locator("#allDives .dive-row")).toContainText(
-    "--:-- – --:--",
+    "--:-- · 18.0 m · 42분",
   );
 });
 test("draft edits persist, remain searchable and filter by mode and style", async ({
   page,
 }) => {
   await page.locator('.nav[data-view="settings"]').click();
-  await page.getByLabel("Load sample dives").check();
+  await page.locator("#demoToggle").check();
   await expect(page.locator("#diveCount")).toHaveText("3");
   await page.locator('.nav[data-view="dives"]').click();
   await page.locator("#allDives .dive-row").first().click();
-  await page.getByRole("button", { name: "Notes", exact: true }).click();
-  await page.getByLabel("Dive title").fill("Discard me");
-  await page.getByRole("dialog").getByRole("button", { name: "×" }).click();
+  await page.locator("#paperEdit").click();
+  await page.locator("#editDiveTitle").fill("Discard me");
+  await page.locator("#profileDialog .close").click();
   await expect(page.locator("#allDives .dive-row").first()).toContainText(
     "Blue Corner",
   );
   await page.locator("#allDives .dive-row").first().click();
-  await page.getByRole("button", { name: "Notes", exact: true }).click();
-  await page.getByLabel("Dive #").fill("321");
-  await page.getByLabel("Dive date").fill("2026-08-02");
-  await page.getByLabel("Start time").fill("14:35");
-  await page.getByLabel("Dive title").fill("Saved smoke dive");
-  await page.getByLabel("Location").fill("Okinawa");
-  await page.getByRole("dialog").getByLabel("Site").fill("Blue Cave");
-  await page.getByRole("dialog").getByLabel("Type").selectOption("Boat");
-  await page.getByLabel("DC mode").selectOption("CC/BO");
-  await page.getByLabel("Dive style").selectOption("Sidemount");
-  await page.getByLabel("Salinity").selectOption("Fresh");
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.locator("#paperEdit").click();
+  await page.locator("#editDiveNumber").fill("321");
+  await page.locator("#editDiveDate").fill("2026-08-02");
+  await page.locator("#editDiveTime").fill("14:35");
+  await page.locator("#editDiveTitle").fill("Saved smoke dive");
+  await page.locator("#editDiveLocation").fill("Okinawa");
+  await page.locator("#editDiveSpot").fill("Blue Cave");
+  await page.locator("#editDiveType").selectOption("Boat");
+  await page.locator("#editDiveMode").selectOption("CC/BO");
+  await page.locator("#editDiveStyle").selectOption("Sidemount");
+  await page.locator("#editDiveSalinity").selectOption("Fresh");
+  await page.locator("#saveDiveDetails").click();
   const savedRow = page.locator("#allDives .dive-row").first();
-  await expect(savedRow).toContainText("Saved smoke dive");
+  await expect(savedRow).toContainText("Okinawa");
+  await expect(savedRow).toContainText("Blue Cave");
   await expect(savedRow).toContainText("CC/BO / Sidemount");
   await expect(savedRow).toContainText("2026-08-02");
-  await expect(savedRow).toContainText("2:35 PM");
+  await expect(savedRow).toContainText("오후 2:35");
   await expect(savedRow.locator(".dive-number-cell")).toContainText("321");
-  await expect(savedRow).toContainText("Saved smoke dive");
   await expect
     .poll(() =>
       page.evaluate(() => window.SeaBirds.Core.getState().dives[0]?.salinity),
@@ -309,40 +309,40 @@ test("draft edits persist, remain searchable and filter by mode and style", asyn
   await page.getByRole("searchbox").fill("");
   await page.locator(".logbook-filter-collapse > summary").click();
   await expect(page.locator("#styleFilters label")).toHaveText([
-    "All",
-    "Single Tank",
-    "Double tanks",
-    "Sidemount",
-    "N/A",
+    "전체",
+    "싱글 탱크",
+    "더블 탱크",
+    "사이드마운트",
+    "해당 없음",
   ]);
   await expect(page.locator("#typeFilters label")).toHaveText([
-    "All",
-    "Shore/Beach",
-    "Boat",
-    "N/A",
+    "전체",
+    "해변 입수",
+    "보트 다이빙",
+    "해당 없음",
   ]);
   await page.locator("#modeFilter summary").click();
   await page.locator("#modeFilters").getByLabel("CC/BO").check();
   await expect(page.locator("#allDives .dive-row")).toHaveCount(1);
-  await page.locator("#styleFilters").getByLabel("Sidemount").check();
+  await page.locator('[data-style-filter="Sidemount"]').check();
   await expect(page.locator("#allDives .dive-row")).toHaveCount(1);
-  await page.locator("#typeFilters").getByLabel("Boat").check();
+  await page.locator('[data-type-filter="Boat"]').check();
   await expect(page.locator("#allDives .dive-row")).toHaveCount(1);
   await expect(page.locator("#allDives .dive-row")).toContainText(
-    "Saved smoke dive",
+    "Blue Cave",
   );
 });
 test("allows a user gas mix to override automatic gas detection", async ({
   page,
 }) => {
   await page.locator('.nav[data-view="settings"]').click();
-  await page.getByLabel("Load sample dives").check();
+  await page.locator("#demoToggle").check();
   await page.locator('.nav[data-view="dives"]').click();
   await page.locator("#allDives .dive-row").first().click();
-  await page.getByRole("button", { name: "Notes", exact: true }).click();
-  await expect(page.getByLabel("Gas Used")).toHaveValue("Air");
-  await page.getByLabel("Gas Used").fill("EAN32");
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.locator("#paperEdit").click();
+  await expect(page.locator("#editDiveGas")).toHaveValue("공기");
+  await page.locator("#editDiveGas").fill("EAN32");
+  await page.locator("#saveDiveDetails").click();
   await expect(page.locator("#profileDialog")).not.toBeVisible();
   expect(
     await page.evaluate(() =>
@@ -421,7 +421,7 @@ test("exports every current dive-entry field", async ({ page }) => {
 });
 test("exports one dive as text, PDF and UDDF", async ({ page }) => {
   await page.locator('.nav[data-view="settings"]').click();
-  await page.getByLabel("Load sample dives").check();
+  await page.locator("#demoToggle").check();
   const textExport = await page.evaluate(() =>
     window.SeaBirds.DiveTextExport.build(
       window.SeaBirds.Core.getState().dives[0],
@@ -468,15 +468,15 @@ test("exports one dive as text, PDF and UDDF", async ({ page }) => {
   await page.locator('.nav[data-view="dives"]').click();
   await page.locator("#allDives .dive-row").first().click();
   const formats = [
-    ["Save as Text", ".txt"],
-    ["Save as PDF", ".pdf"],
-    ["Save as UDDF", ".uddf"],
+    ["text", ".txt"],
+    ["pdf", ".pdf"],
+    ["uddf", ".uddf"],
   ];
-  for (const [label, extension] of formats) {
-    await page.getByRole("button", { name: "Export dive" }).click();
+  for (const [format, extension] of formats) {
+    await page.locator("#openDiveExport").click();
     await expect(page.locator("#diveExportDialog")).toBeVisible();
     const pending = page.waitForEvent("download");
-    await page.getByRole("button", { name: new RegExp(label) }).click();
+    await page.locator(`[data-dive-export="${format}"]`).click();
     const download = await pending;
     expect(download.suggestedFilename()).toContain(extension);
   }
@@ -485,16 +485,14 @@ test("creates, imports, backs up, restores and deletes dives", async ({
   page,
 }) => {
   await page.locator('.nav[data-view="dives"]').click();
-  await page.getByRole("button", { name: "+ Add dive" }).click();
+  await page.locator("#addDive").click();
   await expect(page.locator("#addDiveDialog")).toBeVisible();
-  await page.getByRole("button", { name: /Manual Input/i }).click();
+  await page.locator("#chooseManualDive").click();
   const dialog = page.locator("#profileDialog");
   await expect(dialog).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Notes", exact: true }),
-  ).toHaveClass(/active/);
-  await dialog.getByLabel("Dive title").fill("Manual Reef");
-  await dialog.getByRole("button", { name: "Save" }).click();
+  await expect(dialog).toHaveClass(/editing-profile/);
+  await dialog.locator("#editDiveTitle").fill("Manual Reef");
+  await dialog.locator("#saveDiveDetails").click();
   await expect(page.locator("#allDives .dive-row")).toContainText(
     "Manual Reef",
   );
@@ -507,7 +505,7 @@ test("creates, imports, backs up, restores and deletes dives", async ({
   });
   await page.locator('.nav[data-view="settings"]').click();
   const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Backup JSON" }).click();
+  await page.locator("#backupJson").click();
   const backup = await download;
   expect(backup.suggestedFilename()).toBe("seabirds-dive-log.json");
   const backupPath = await backup.path();
@@ -517,7 +515,7 @@ test("creates, imports, backs up, restores and deletes dives", async ({
     .filter({ hasText: "Manual Reef" })
     .click();
   page.once("dialog", (prompt) => prompt.accept());
-  await page.getByRole("button", { name: "Delete dive" }).click();
+  await page.locator("#deleteDive").click();
   await expect(page.locator("#allDives")).not.toContainText("Manual Reef");
   await page.locator('.nav[data-view="settings"]').click();
   page.once("dialog", (prompt) => prompt.accept());
@@ -529,4 +527,224 @@ test("creates, imports, backs up, restores and deletes dives", async ({
   );
   await page.locator('.nav[data-view="dives"]').click();
   await expect(page.locator("#allDives")).toContainText("Manual Reef");
+});
+
+test("creates a log-number trip group and organizes dives by day and start time", async ({ page }) => {
+  await page.evaluate(async () => {
+    await window.SeaBirds.Core.commit((state) => {
+      state.diveGroups = [];
+      state.dives = [
+        { id: "cebu-182", diveNumber: 182, date: "2026-07-12", time: "11:35", site: "마리곤돈 케이브", location: "막탄", depth: 25.1, duration: 48, startPressure: 180, endPressure: 50, profile: [] },
+        { id: "cebu-181", diveNumber: 181, date: "2026-07-12", time: "09:10", site: "콘티키 하우스리프", location: "막탄", depth: 18.4, duration: 42, startPressure: 200, endPressure: 60, profile: [] },
+        { id: "cebu-183", diveNumber: 183, date: "2026-07-13", time: "08:55", site: "탈리마", location: "올랑고", depth: 21.3, duration: 46, startPressure: 200, endPressure: 60, profile: [] },
+      ];
+    });
+  });
+  await page.locator("#addTripGroup").click();
+  await expect(page.locator("#diveGroupType")).toHaveValue("range");
+  await page.locator("#diveGroupName").fill("7월 세부여행");
+  await expect(page.locator("#diveGroupStartNumber option").first()).toContainText("#181 · 콘티키 하우스리프");
+  await page.locator("#diveGroupStartNumber").selectOption("181");
+  await page.locator("#diveGroupEndNumber").selectOption("183");
+  await page.locator("#saveDiveGroup").click();
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-seabirds-ready", "true");
+  const groupCard = page.locator(".trip-group-card").filter({ hasText: "7월 세부여행" });
+  await expect(groupCard).toContainText("3회 다이빙");
+  await groupCard.click();
+  await expect(page.locator("#tripGroupDetail .trip-detail-hero")).toContainText("7월 세부여행");
+  await expect(page.locator("#tripGroupDetail .trip-day-section")).toHaveCount(2);
+  await expect(page.locator("#tripGroupDetail .trip-day-section").first()).toContainText("1일차 · 7월 12일 (일)");
+  const firstDayTimes = await page.locator("#tripGroupDetail .trip-day-section").first().locator("time").allTextContents();
+  expect(firstDayTimes).toEqual(["오전 9:10", "오전 11:35"]);
+  await expect(page.locator("#tripGroupDetail")).toContainText("200 → 60 bar");
+  await page.locator("[data-close-trip-group]").click();
+  await expect(page.locator("#tripGroupsSection")).toBeVisible();
+});
+
+test("calculates surface interval from the previous dive record", async ({ page }) => {
+  await page.evaluate(async () => {
+    await window.SeaBirds.Core.commit((state) => {
+      state.dives = [
+        { id: "interval-1", date: "2026-09-20", time: "09:00", duration: 40, site: "첫 다이빙", depth: 12, profile: [] },
+        { id: "interval-2", date: "2026-09-20", time: "10:35", duration: 45, site: "두 번째 다이빙", depth: 15, profile: [], surfaceInterval: null },
+      ];
+    });
+    window.SeaBirds.Core.feature("diveEditor").open("interval-2");
+  });
+  await expect(page.locator("#editDiveSurfaceInterval")).toHaveValue("55");
+  await expect(page.locator("#profileStats")).toContainText("55분");
+});
+
+test("assigns the next dive number and saves the weight", async ({ page }) => {
+  await page.evaluate(async () => {
+    await window.SeaBirds.Core.commit((state) => {
+      state.settings.manualLastLogNumber = "165";
+      state.dives = [
+        { id: "numbered-166", diveNumber: 166, date: "2026-09-20", time: "09:00", duration: 40, site: "기존 기록", depth: 12, profile: [] },
+      ];
+    });
+    window.SeaBirds.Core.feature("diveEditor").createManual();
+  });
+  await expect(page.locator("#editDiveNumber")).toHaveValue("167");
+  await page.locator("#editDiveWeight").fill("6.5");
+  await page.locator("#saveDiveDetails").click();
+  const newest = await page.evaluate(() =>
+    window.SeaBirds.Core.getState().dives.find((dive) => dive.diveNumber === 167),
+  );
+  expect(newest.weight).toBe(6.5);
+});
+
+test("shows minimum maximum and average profile temperatures in the logbook", async ({ page }) => {
+  await page.evaluate(async () => {
+    const dive = {
+      id: "temperature-summary",
+      diveNumber: 168,
+      date: "2026-09-25",
+      time: "09:00",
+      duration: 30,
+      depth: 12,
+      site: "온도 테스트",
+      profile: [
+        { t: 0, depth: 0, temperature: 27 },
+        { t: 10, depth: 12, temperature: 23 },
+        { t: 20, depth: 10, temperature: 25 },
+        { t: 30, depth: 0, temperature: 27 },
+      ],
+    };
+    await window.SeaBirds.Core.commit((state) => { state.dives = [dive]; });
+    window.SeaBirds.Core.feature("diveEditor").open(dive.id);
+  });
+  const temperatures = page.locator(".paper-temperature-summary");
+  await expect(temperatures).toContainText("최저 수온");
+  await expect(temperatures).toContainText("23.0°C");
+  await expect(temperatures).toContainText("최고 수온");
+  await expect(temperatures).toContainText("27.0°C");
+  await expect(temperatures).toContainText("평균 수온");
+  await expect(temperatures).toContainText("25.5°C");
+});
+
+test("shows tank pressures in the list and toggles multiple dive types without a popup", async ({ page }) => {
+  await page.evaluate(async () => {
+    const dive = {
+      id: "pressure-and-types",
+      diveNumber: 169,
+      date: "2026-09-25",
+      time: "09:00",
+      duration: 40,
+      depth: 15,
+      site: "압력 테스트",
+      location: "울릉도",
+      diveSite: "코끼리 바위",
+      startPressure: 200,
+      endPressure: 50,
+      diveType: "",
+      tags: [],
+      profile: [],
+    };
+    await window.SeaBirds.Core.commit((state) => { state.dives = [dive]; });
+  });
+  await expect(page.locator('.logbook-card[data-id="pressure-and-types"]')).toContainText("200 → 50 bar");
+  await page.evaluate(() => window.SeaBirds.Core.feature("diveEditor").open("pressure-and-types"));
+  await page.locator('[data-toggle-dive-tag="shore"]').click();
+  await page.locator('[data-toggle-dive-tag="boat"]').click();
+  await page.locator('[data-toggle-dive-tag="night"]').click();
+  await expect(page.locator("#quickEditDialog")).not.toHaveAttribute("open", "");
+  const tags = await page.evaluate(() => window.SeaBirds.Core.getState().dives[0].tags);
+  expect(tags).toEqual(expect.arrayContaining(["해안", "보트", "야간"]));
+  await expect(page.locator(".paper-check.checked")).toHaveCount(3);
+});
+
+test("opens the photo and video picker directly from the paper logbook", async ({ page }) => {
+  await page.evaluate(async () => {
+    const dive = { id: "media-button", diveNumber: 170, date: "2026-09-25", time: "09:00", duration: 30, depth: 10, site: "미디어 테스트", tags: [], profile: [] };
+    await window.SeaBirds.Core.commit((state) => { state.dives = [dive]; });
+    window.SeaBirds.Core.feature("diveEditor").open(dive.id);
+    const input = document.getElementById("editDiveMedia");
+    input.addEventListener("click", () => { input.dataset.pickerOpened = "true"; });
+  });
+  const addMedia = page.locator("[data-add-dive-media]");
+  await expect(addMedia).toBeVisible();
+  await addMedia.click();
+  await expect(page.locator("#editDiveMedia")).toHaveAttribute("data-picker-opened", "true");
+  await expect(page.locator("#quickEditDialog")).not.toHaveAttribute("open", "");
+});
+
+test("draws with a finger and saves the sketch in the dive log", async ({ page }) => {
+  await page.evaluate(async () => {
+    const dive = { id: "drawing-log", diveNumber: 171, date: "2026-09-26", time: "10:00", duration: 35, depth: 12, site: "그림 테스트", tags: [], profile: [] };
+    await window.SeaBirds.Core.commit((state) => { state.dives = [dive]; });
+    window.SeaBirds.Core.feature("diveEditor").open(dive.id);
+  });
+  await page.locator(".paper-drawing-add").click();
+  await expect(page.locator("#diveDrawingDialog")).toHaveAttribute("open", "");
+  const canvas = page.locator("#diveDrawingCanvas"), box = await canvas.boundingBox();
+  await page.mouse.move(box.x + 40, box.y + 40);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 180, box.y + 120, { steps: 8 });
+  await page.mouse.up();
+  await page.locator("#saveDiveDrawing").click();
+  await expect(page.locator("#diveDrawingDialog")).not.toHaveAttribute("open", "");
+  await expect(page.locator("#paperMediaGallery img")).toHaveCount(1);
+  await page.locator(".paper-drawing-add").click();
+  await page.evaluate(() => window.SeaBirdsHandleBack());
+  await expect(page.locator("#diveDrawingDialog")).not.toHaveAttribute("open", "");
+  await expect(page.locator("#profileDialog")).toHaveAttribute("open", "");
+});
+
+test("shows compact location/site cards and keeps local photo attachments", async ({ page }) => {
+  await page.locator("#addDive").click();
+  await page.locator("#chooseManualDive").click();
+  await page.locator("#editDiveLocation").fill("울릉도");
+  await page.locator("#editDiveSpot").fill("코끼리 바위");
+  await page.locator("#editDiveTitle").fill("울릉도 다이빙");
+  await page.locator("#editDiveEndTime").fill("09:43");
+  await page.locator("#editDiveAvgDepth").fill("6.8");
+  await page.locator("#editDiveSurfaceInterval").fill("52");
+  await page.locator("#editDiveSafetyStop").selectOption("3");
+  await page.locator("#editDiveStartPressure").fill("200");
+  await page.locator("#editDiveEndPressure").fill("50");
+  await page.locator("#editDiveWeather").selectOption("맑음");
+  await page.locator("#editDiveWave").selectOption("약함");
+  await page.locator("#editDiveCurrent").selectOption("보통");
+  await page.locator("#editDiveMedia").setInputFiles({
+    name: "reef.svg",
+    mimeType: "image/svg+xml",
+    buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="30"><rect width="40" height="30" fill="#167b8a"/></svg>'),
+  });
+  await expect(page.locator("#diveMediaGallery img")).toHaveCount(1);
+  await page.locator("#saveDiveDetails").click();
+  const card = page.locator("#allDives .logbook-card").filter({ hasText: "코끼리 바위" });
+  await expect(card).toContainText("울릉도");
+  await card.click();
+  await expect(page.locator("#profileStats .paper-logbook-heading")).toContainText("울릉도");
+  await expect(page.locator("#profileStats .paper-logbook-heading")).toContainText("코끼리 바위");
+  await expect(page.locator("#profileStats")).toContainText("오전 9:43");
+  await expect(page.locator("#profileStats")).toContainText("6.8 m");
+  await expect(page.locator("#profileStats")).toContainText("52분");
+  await expect(page.locator("#profileStats")).toContainText("200 bar");
+  await expect(page.locator("#profileStats")).toContainText("맑음");
+  await expect(page.locator("#paperMediaGallery img")).toHaveCount(1);
+  const mediaLayout = await page.evaluate(() => {
+    const image = document.querySelector("#paperMediaGallery img").getBoundingClientRect();
+    const figure = document.querySelector("#paperMediaGallery figure").getBoundingClientRect();
+    const stamp = document.querySelector(".paper-logbook-notes > img");
+    return { imageWidth: image.width, figureWidth: figure.width, hasStamp: Boolean(stamp) };
+  });
+  expect(mediaLayout.imageWidth).toBeGreaterThan(mediaLayout.figureWidth * 0.95);
+  expect(mediaLayout.hasStamp).toBe(false);
+  await page.locator('[data-dive-tab="notes"]').click();
+  await expect(page.locator("#diveMediaGallery img")).toHaveCount(1);
+  await page.locator('[data-dive-tab="profile"]').click();
+  await expect(page.locator("[data-remove-paper-media]")).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator("[data-remove-paper-media]").click();
+  await expect(page.locator("#paperMediaGallery img")).toHaveCount(0);
+  await page.locator("#profileDialog .close").click();
+  await expect(page.locator("#profileDialog")).not.toHaveAttribute("open", "");
+  await card.click();
+  await expect(page.locator("#profileDialog")).toHaveAttribute("open", "");
+  await expect(page.locator("#paperMediaGallery img")).toHaveCount(0);
+  await page.evaluate(() => window.SeaBirdsHandleBack());
+  await expect(page.locator("#profileDialog")).not.toHaveAttribute("open", "");
 });
